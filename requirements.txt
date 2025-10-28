@@ -1,0 +1,16 @@
+# Django V13 Requirements for Render Deployment
+
+# Django Web Framework
+Django==4.2.7
+
+# HTTP Requests voor WordPress API
+requests==2.31.0
+
+# Gunicorn - WSGI HTTP Server voor Render deployment
+gunicorn==21.2.0
+
+# Debug Toolbar (Development/Local testing)
+django-debug-toolbar==4.1.0
+
+# Additional security packages
+django-cors-headers==4.3.1

@@ -1,0 +1,1 @@
+# Migrations folder for rental_system app

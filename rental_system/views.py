@@ -47,7 +47,9 @@ def index(request):
         wp_client = WordPressAPIClient()
         
         # Test WordPress connection
-        wp_status = wp_client.test_connection()
+      # Skip WordPress connection test for faster page loading
+wp_status = {'success': False, 'message': 'Skipped for performance'}
+
         is_wordpress_available = wp_status.get('success', False)
         
         # Get WordPress status

@@ -64,7 +64,7 @@ class WordPressAPIClient:
             response = self.session.get(
                 f"{self.base_url}/wp/v2/posts",
                 headers=self.default_headers,
-                timeout=10
+                timeout=2
             )
             
             if response.status_code == 200:

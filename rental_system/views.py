@@ -3,7 +3,7 @@ RENTAL SYSTEM VIEWS.PY - V14
 =============================
 
 RENDER DEPLOYMENT + WORDPRESS INTEGRATION
-VERSIE: 14 - COMPLETE IMPLEMENTATION
+VERSIE: 14 - WORKING VERSION BASED ON V13
 
 AUTEUR: MiniMax AGENT
 VERSIE: V14
@@ -25,14 +25,20 @@ from .wordpress_api import WordPressAPIClient
 
 logger = logging.getLogger(__name__)
 
-
 def index(request):
     """Main calendar view - Render Deployment Ready"""
     try:
+        # Get WordPress API client
         wp_client = WordPressAPIClient()
+        
+        # Test WordPress connection
         wp_status = wp_client.test_connection()
         is_wordpress_available = wp_status.get('success', False)
         
+        # Get WordPress status
+        wordpress_status = "🟢 Connected" if is_wordpress_available else "🔴 Disconnected"
+        
+        # Get user info from session
         user_info = {}
         if hasattr(request, 'user') and request.user.is_authenticated:
             user_info = {
@@ -46,13 +52,15 @@ def index(request):
         context = {
             'user_info': user_info,
             'is_wordpress_available': is_wordpress_available,
+            'wordpress_status': wordpress_status,
             'version': 'V14',
             'version_date': '2025-10-29',
             'render_ready': True,
-            'wp_api_url': 'https://test.kroanworks.be/wp-json'
+            'wp_api_url': 'https://test.kroanworks.be/wp-json',
+            'django_env': 'Production - Render Ready'
         }
         
-        logger.info("V14 calendar view loaded successfully")
+        logger.info(f"V14 calendar view loaded - WordPress: {wordpress_status}")
         return render(request, 'calendar.html', context)
         
     except Exception as e:
@@ -60,6 +68,7 @@ def index(request):
         context = {
             'user_info': {'authenticated': False},
             'is_wordpress_available': False,
+            'wordpress_status': '🔴 Error',
             'error_message': str(e),
             'version': 'V14',
             'version_date': '2025-10-29',
@@ -67,6 +76,25 @@ def index(request):
         }
         return render(request, 'calendar.html', context)
 
+def health_check(request):
+    """Health check endpoint for Render deployment"""
+    try:
+        wp_client = WordPressAPIClient()
+        wp_status = wp_client.test_connection()
+        
+        return JsonResponse({
+            'status': 'healthy',
+            'version': 'V14',
+            'timestamp': datetime.now().isoformat(),
+            'wordpress_available': wp_status.get('success', False),
+            'render_deployment': True
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'unhealthy',
+            'error': str(e),
+            'version': 'V14'
+        }, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
@@ -88,7 +116,6 @@ def api_health(request):
     else:
         return JsonResponse({'message': 'Use GET for health check'})
 
-
 @csrf_exempt
 @require_http_methods(["GET", "POST"])  
 def api_user_session(request):
@@ -106,6 +133,7 @@ def api_user_session(request):
         else:
             user_info = {'authenticated': False}
         
+        # WordPress status
         wp_client = WordPressAPIClient()
         wp_status = wp_client.test_connection()
         is_wordpress_available = wp_status.get('success', False)
@@ -115,7 +143,8 @@ def api_user_session(request):
             'user_info': user_info,
             'is_wordpress_available': is_wordpress_available,
             'wordpress_status': '🟢 Connected' if is_wordpress_available else '🔴 Disconnected',
-            'version': 'V14'
+            'version': 'V14',
+            'render_deployment': True
         })
         
     except Exception as e:
@@ -127,33 +156,37 @@ def api_user_session(request):
             'version': 'V14'
         }, status=500)
 
-
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def api_availability(request):
-    """Get availability data from WordPress API"""
+    """Get availability data from WordPress API - V14 FIX: Both GET and POST support"""
     try:
+        # Get CSRF token
         csrf_token = get_token(request)
         
+        # Get date range from request
         if request.method == 'POST':
             data = json.loads(request.body)
             start_date = data.get('start_date', '') or data.get('start', '')
             end_date = data.get('end_date', '') or data.get('end', '')
         elif request.method == 'GET':
+            # Support query parameters from V14 template
             start_date = request.GET.get('start', '')
             end_date = request.GET.get('end', '')
             
+            # Also support start_date and end_date parameters
             if not start_date:
                 start_date = request.GET.get('start_date', '')
             if not end_date:
                 end_date = request.GET.get('end_date', '')
-        
-        if not start_date or not end_date:
+        else:
+            # Default to current month
             today = datetime.now()
             start_date = today.replace(day=1).strftime('%Y-%m-%d')
             next_month = today.replace(day=28) + timedelta(days=4)
             end_date = next_month.replace(day=1).strftime('%Y-%m-%d')
         
+        # Get data from WordPress API
         wp_client = WordPressAPIClient()
         availability_data = wp_client.get_availability(start_date, end_date)
         
@@ -176,7 +209,6 @@ def api_availability(request):
             'version': 'V14'
         }, status=500)
 
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_calculate_price(request):
@@ -184,7 +216,8 @@ def api_calculate_price(request):
     try:
         data = json.loads(request.body)
         
-        base_price = 100.00
+        # Price calculation logic here
+        base_price = 100.00  # Base price
         days = data.get('days', 1)
         total_price = base_price * days
         
@@ -205,7 +238,6 @@ def api_calculate_price(request):
             'version': 'V14'
         }, status=500)
 
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_create_reservation(request):
@@ -213,12 +245,13 @@ def api_create_reservation(request):
     try:
         data = json.loads(request.body)
         
+        # WordPress reservation logic here
         wp_client = WordPressAPIClient()
         
         return JsonResponse({
             'success': True,
             'reservation_id': 'reservation-123',
-            'message': 'Reservering succesvol aangemaakt!',
+            'message': 'Reservation created successfully',
             'version': 'V14'
         })
         
@@ -230,7 +263,6 @@ def api_create_reservation(request):
             'version': 'V14'
         }, status=500)
 
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_login(request):
@@ -240,10 +272,12 @@ def api_login(request):
         username = data.get('username', '')
         password = data.get('password', '')
         
+        # WordPress authentication
         wp_client = WordPressAPIClient()
         auth_result = wp_client.authenticate_user(username, password)
         
         if auth_result.get('success'):
+            # Log user in Django session if needed
             return JsonResponse({
                 'success': True,
                 'message': 'Login successful',
@@ -265,12 +299,12 @@ def api_login(request):
             'version': 'V14'
         }, status=500)
 
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_logout(request):
     """Handle user logout"""
     try:
+        # WordPress logout
         wp_client = WordPressAPIClient()
         
         return JsonResponse({
@@ -287,7 +321,6 @@ def api_logout(request):
             'version': 'V14'
         }, status=500)
 
-
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_status(request):
@@ -298,7 +331,7 @@ def api_status(request):
         
         return JsonResponse({
             'system_status': 'operational',
-            'wordpress_connection': wp_status.get('success', False),
+            'wordpress_connection': wp_status,
             'django_version': '4.2.7',
             'render_ready': True,
             'version': 'V14',
@@ -312,7 +345,6 @@ def api_status(request):
             'error': str(e),
             'version': 'V14'
         }, status=500)
-
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -338,11 +370,11 @@ def api_wordpress_test(request):
             'version': 'V14'
         }, status=500)
 
-
+# V14 FIX: Proper array format for formulas dropdown
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_formulas(request):
-    """Get pricing formulas - V14 compatible format"""
+    """Get pricing formulas - V14 Array Format"""
     formulas = [
         {
             'name': 'Weekend formule',
@@ -378,7 +410,6 @@ def api_formulas(request):
         'version': 'V14'
     })
 
-
 @csrf_exempt  
 @require_http_methods(["GET"])
 def api_debug_formulas(request):
@@ -391,7 +422,6 @@ def api_debug_formulas(request):
         },
         'version': 'V14'
     })
-
 
 @csrf_exempt
 @require_http_methods(["GET"])
